@@ -18,9 +18,22 @@ static inline double sqr(double v) {
    return v*v;
  }
 
+ static inline double len(double* v) {
+   double len = sqrt(sqr(v[0]) + sqr(v[1]) + sqr(v[2]));
+   return len;
+ }
+
 //return the dot product of two double vectors
 static inline double dot(double* v1, double* v2){
   return v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2];
+}
+
+static inline double* cross(double* v1, double* v2){
+  double val[3];
+  val[0] = v1[1]*v2[2] - v1[2]*v2[1];
+  val[1] = v1[2]*v2[0] - v1[0]*v2[2];
+  val[2] = v1[0]*v2[1] - v1[1]*v2[0]};
+  return val;
 }
 
 //Subtract one vector from another
@@ -30,6 +43,22 @@ static inline double* sub(double* v1, double* v2){
   result[1] = v1[1] - v2[1];
   result[2] = v1[2] - v2[2];
   return result;
+}
+
+static inline double* add(double* v1, double* v2){
+  static double result[3];
+  result[0] = v1[0] + v2[0];
+  result[1] = v1[1] + v2[1];
+  result[2] = v1[2] + v2[2];
+  return result;
+}
+
+static inline double* scale(double t, double* v){
+  double val[3];
+  val[0] = t * v[0];
+  val[1] = t * v[1];
+  val[2] = t * v[2];
+  return val;
 }
 
   //normalize a vector
@@ -223,12 +252,41 @@ static inline double* sub(double* v1, double* v2){
         if (t > 0 && t < best_t) {
           best_t = t;
           best_obj = objects[i];
-          if(best_obj-> kind == 1) curcolor = best_obj->sphere.specular;
-          else if(best_obj-> kind == 2) curcolor = best_obj->plane.specular;
-          else fprintf(stderr, "Error: unknown primative type\n");
-
         }
       }
+
+      curcolor[0] = 0;
+      curcolor[1] = 0;
+      curcolor[2] = 0;
+
+      for (int j=0; lights[j] != NULL; j+=1) {
+      // Shadow test
+        double* Ron = malloc(sizeof(double)*3);
+        Ron = add(scale(best_t, Rd), Ro);
+        Rdn = sub(lights[j]->position, Ron);
+        Object* closest_shadow_object = NULL;
+        for (int k=0; object[k] != NULL; k+=1) {
+        	if (object[k] == closest_object) continue;
+        	//
+        	switch(objects[i]->kind) {
+            case 0
+          	  break;
+          	case 1:
+          	  t = sphere_intersect(..);
+          	  break;
+          	case 2:
+          	  t = plane_intersect(..);
+          	  break;
+            case 3:
+          	  break;
+        	default:
+          	  // ERROR
+          	  break;
+          	}
+          	if (t > ) {
+          	  continue;
+          	}
+          }
 
       //24-bit colors from our double color values
      static unsigned char outcolor[3];
@@ -241,15 +299,15 @@ static inline double* sub(double* v1, double* v2){
 
      //If we got a collision, color it with the current pixel
      if (best_t > 0 && best_t != INFINITY) {
-       image.data[curPix].r = outcolor[0];
-       image.data[curPix].g = outcolor[1];
-       image.data[curPix].b = outcolor[2];
+       image.datv1[curPix].r = outcolor[0];
+       image.datv1[curPix].g = outcolor[1];
+       image.datv1[curPix].b = outcolor[2];
      }
      //otherwise, color it with the background color
      else {
-       image.data[curPix].r = backcolor[0];
-       image.data[curPix].g = backcolor[1];
-       image.data[curPix].b = backcolor[2];
+       image.datv1[curPix].r = backcolor[0];
+       image.datv1[curPix].g = backcolor[1];
+       image.datv1[curPix].b = backcolor[2];
      }
    }
  }
