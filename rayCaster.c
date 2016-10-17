@@ -29,11 +29,11 @@ static inline double dot(double* v1, double* v2){
 }
 
 static inline double* cross(double* v1, double* v2){
-  double val[3];
-  val[0] = v1[1]*v2[2] - v1[2]*v2[1];
-  val[1] = v1[2]*v2[0] - v1[0]*v2[2];
-  val[2] = v1[0]*v2[1] - v1[1]*v2[0]};
-  return val;
+  static double result[3];
+  result[0] = v1[1]*v2[2] - v1[2]*v2[1];
+  result[1] = v1[2]*v2[0] - v1[0]*v2[2];
+  result[2] = v1[0]*v2[1] - v1[1]*v2[0];
+  return result;
 }
 
 //Subtract one vector from another
@@ -54,11 +54,11 @@ static inline double* add(double* v1, double* v2){
 }
 
 static inline double* scale(double t, double* v){
-  double val[3];
-  val[0] = t * v[0];
-  val[1] = t * v[1];
-  val[2] = t * v[2];
-  return val;
+  static double result[3];
+  result[0] = t * v[0];
+  result[1] = t * v[1];
+  result[2] = t * v[2];
+  return result;
 }
 
   //normalize a vector
@@ -74,6 +74,12 @@ static inline double* scale(double t, double* v){
  static inline double dist(double* v1, double* v2){
    return normalize(sub(v1, v2));
  }
+
+ double frad(double* rad, double d){
+   return 1 / ((rad[0] * sqr(d)) + (rad[1] * d) + rad[2]);
+ }
+
+ double fang(double ang, )
 
  //check for ray-plane intersections
  double plane_intersection(double* Ro, double* Rd,
@@ -263,19 +269,20 @@ static inline double* scale(double t, double* v){
       // Shadow test
         double* Ron = malloc(sizeof(double)*3);
         Ron = add(scale(best_t, Rd), Ro);
-        Rdn = sub(lights[j]->position, Ron);
+        double* Rdn = sub(lights[j]->light.position, Ron);
+        double dist = len(Rdn);
         Object* closest_shadow_object = NULL;
-        for (int k=0; object[k] != NULL; k+=1) {
-        	if (object[k] == closest_object) continue;
-        	//
-        	switch(objects[i]->kind) {
-            case 0
+        for (int k=0; objects[k] != NULL; k+=1) {
+          double t;
+        	if (objects[k] == best_obj) continue;
+        	switch(objects[k]->kind) {
+            case 0:
           	  break;
           	case 1:
-          	  t = sphere_intersect(..);
+          	  t = sphere_intersection(Ron, Rdn, objects[k]->sphere.position, objects[k]->sphere.radius);
           	  break;
           	case 2:
-          	  t = plane_intersect(..);
+          	  t = plane_intersection(Ron, Rdn, objects[k]->plane.position, objects[k]->plane.normal);
           	  break;
             case 3:
           	  break;
@@ -283,10 +290,30 @@ static inline double* scale(double t, double* v){
           	  // ERROR
           	  break;
           	}
-          	if (t > ) {
+          	if (t > dist) {
           	  continue;
           	}
+            closest_shadow_object = objects[k];
           }
+          if (closest_shadow_object == NULL) {
+            double* N = malloc(sizeof(double)*3);
+            double* L = malloc(sizeof(double)*3);
+            double* R = malloc(sizeof(double)*3);
+            double* V = malloc(sizeof(double)*3);
+
+            if(best_obj->kind == 1)	N = sub(Ron, best_obj->sphere.position);
+            else N = best_obj->plane.normal; // plane
+
+          	L = Rdn; // light_position - Ron;
+          	R = sub(L, scale(2 * dot(L,N), N);
+          	V = Rd;
+          	diffuse = ...; // uses object's diffuse color
+          	specular = ...; // uses object's specular color
+          	color[0] += frad(lights[j]->light.radial) * fang(lights[j]->light.angular) * (diffuse + specular);
+          	color[1] += frad(lights[j]->light.radial) * fang(lights[j]->light.angular) * (diffuse + specular);
+          	color[2] += frad(lights[j]->light.radial) * fang(lights[j]->light.angular) * (diffuse + specular);
+          }
+        }
 
       //24-bit colors from our double color values
      static unsigned char outcolor[3];
@@ -299,15 +326,15 @@ static inline double* scale(double t, double* v){
 
      //If we got a collision, color it with the current pixel
      if (best_t > 0 && best_t != INFINITY) {
-       image.datv1[curPix].r = outcolor[0];
-       image.datv1[curPix].g = outcolor[1];
-       image.datv1[curPix].b = outcolor[2];
+       image.data[curPix].r = outcolor[0];
+       image.data[curPix].g = outcolor[1];
+       image.data[curPix].b = outcolor[2];
      }
      //otherwise, color it with the background color
      else {
-       image.datv1[curPix].r = backcolor[0];
-       image.datv1[curPix].g = backcolor[1];
-       image.datv1[curPix].b = backcolor[2];
+       image.data[curPix].r = backcolor[0];
+       image.data[curPix].g = backcolor[1];
+       image.data[curPix].b = backcolor[2];
      }
    }
  }
