@@ -27,6 +27,7 @@ typedef struct {
       double direction[3];
       double radial[3];
       double angular;
+      double theta;
     } light;
   };
 } Object;

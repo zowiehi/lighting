@@ -12,6 +12,13 @@ Ray Caster
  #include <math.h>
  #include "parser.h"
 
+ double ns = 20;
+
+double clamp(double v){
+  if( v > 1) v = 1;
+  else if(v < 0) v = 0;
+  return v;
+  }
 
 //returnthe square of the supplied number
 static inline double sqr(double v) {
@@ -76,10 +83,34 @@ static inline double* scale(double t, double* v){
  }
 
  double frad(double* rad, double d){
+   printf("here\n" );
    return 1 / ((rad[0] * sqr(d)) + (rad[1] * d) + rad[2]);
  }
 
- double fang(double ang, )
+ double fang(double ang, double theta, double* Rdn, double* dir){
+   printf("here\n" );
+   if(dir[0] == 0 && dir[1] == 0 && dir[2] == 0) return 1.0;
+   double val = dot(Rdn, dir);
+   printf("1here\n" );
+   printf("%f %f\n", val, cos(theta));
+   if (val < cos(theta)) {
+    return 0.0;
+  }
+   else return pow(val, ang);
+ }
+
+ double* dif(double* Kd, double* Il, double* N, double* L){
+   double dots = dot(N,L);
+   printf("dots:%f\n", dots );
+   if(dots > 0)return scale(dots, cross(Kd, Il));
+   else return 0;
+ }
+
+ double* spec(double* Ks, double* Il, double* V, double* R){
+   double dots = dot(V,R);
+   if (dots > 0)return scale(pow(dots,ns), cross(Ks, Il));
+   else return 0;
+ }
 
  //check for ray-plane intersections
  double plane_intersection(double* Ro, double* Rd,
@@ -162,7 +193,7 @@ static inline double* scale(double t, double* v){
    lights[Li+1] = NULL;
 
 
-   double *curcolor;
+   double *curcolor = malloc(sizeof(double)*3);
    static unsigned char backcolor[3] = {85, 85, 85};
 
    //get width and height from the input
@@ -261,16 +292,25 @@ static inline double* scale(double t, double* v){
         }
       }
 
+      double* difcol = malloc(sizeof(double)*3);
+      if(best_obj->kind == 1) difcol = best_obj->sphere.diffuse;
+      else if(best_obj->kind == 2) difcol = best_obj->plane.diffuse;
+
+      double* speccol = malloc(sizeof(double)*3);
+      if(best_obj->kind == 1) speccol = best_obj->sphere.diffuse;
+      else if(best_obj->kind == 2) speccol = best_obj->plane.diffuse;
+
       curcolor[0] = 0;
       curcolor[1] = 0;
       curcolor[2] = 0;
 
       for (int j=0; lights[j] != NULL; j+=1) {
+
       // Shadow test
         double* Ron = malloc(sizeof(double)*3);
         Ron = add(scale(best_t, Rd), Ro);
         double* Rdn = sub(lights[j]->light.position, Ron);
-        double dist = len(Rdn);
+        double dist = normalize(Rdn);
         Object* closest_shadow_object = NULL;
         for (int k=0; objects[k] != NULL; k+=1) {
           double t;
@@ -290,36 +330,52 @@ static inline double* scale(double t, double* v){
           	  // ERROR
           	  break;
           	}
-          	if (t > dist) {
+          	if (t > dist || t < 0) {
           	  continue;
           	}
             closest_shadow_object = objects[k];
           }
           if (closest_shadow_object == NULL) {
-            double* N = malloc(sizeof(double)*3);
+             double* N = malloc(sizeof(double)*3);
             double* L = malloc(sizeof(double)*3);
             double* R = malloc(sizeof(double)*3);
             double* V = malloc(sizeof(double)*3);
+            double* Kd = malloc(sizeof(double)*3);
+            double* Ks = malloc(sizeof(double)*3);
+
+
 
             if(best_obj->kind == 1)	N = sub(Ron, best_obj->sphere.position);
-            else N = best_obj->plane.normal; // plane
+            else if(best_obj->kind == 2)N = best_obj->plane.normal; // plane
 
-          	L = Rdn; // light_position - Ron;
-          	R = sub(L, scale(2 * dot(L,N), N);
-          	V = Rd;
-          	diffuse = ...; // uses object's diffuse color
-          	specular = ...; // uses object's specular color
-          	color[0] += frad(lights[j]->light.radial) * fang(lights[j]->light.angular) * (diffuse + specular);
-          	color[1] += frad(lights[j]->light.radial) * fang(lights[j]->light.angular) * (diffuse + specular);
-          	color[2] += frad(lights[j]->light.radial) * fang(lights[j]->light.angular) * (diffuse + specular);
+            printf("%f %f %f\n", Rdn[0], Rdn[1], Rdn[2] );
+
+	          L = Rdn; // light_position - Ron;
+            normalize(L);
+            printf("%f %f %f\n", L[0], L[1], L[2] );
+            printf("%f %f %f\n", lights[j]->light.direction[0], lights[j]->light.direction[1], lights[j]->light.direction[2] );
+          	R = sub(scale(2 * dot(L,N), N), L);
+          	V = scale(-1, Rd);
+          	Kd = dif(difcol, lights[j]->light.color, N, L); // uses object's diffuse color
+          	Ks = spec(speccol, lights[j]->light.color, V, R);; // uses object's specular color
+
+            printf("%f %f\n", Kd[0], Ks[0]);
+
+            printf("here\n" );
+          	curcolor[0] += frad(lights[j]->light.radial, dist) * fang(lights[j]->light.angular, lights[j]->light.theta, L, lights[j]->light.direction) * (Kd[0] + Ks[0]);
+            printf("2here\n" );
+          	curcolor[1] += frad(lights[j]->light.radial, dist) * fang(lights[j]->light.angular, lights[j]->light.theta, Rdn, lights[j]->light.direction) * (Kd[0] + Ks[0]);
+          	curcolor[2] += frad(lights[j]->light.radial, dist) * fang(lights[j]->light.angular, lights[j]->light.theta, Rdn, lights[j]->light.direction) * (Kd[0] + Ks[0]);
+            printf("here\n" );
           }
         }
 
       //24-bit colors from our double color values
      static unsigned char outcolor[3];
-     outcolor[0] = (char) (255 * curcolor[0]);
-     outcolor[1] = (char) (255 * curcolor[1]);
-     outcolor[2] = (char) (255 * curcolor[2]);
+
+     outcolor[0] = (char) (255 * clamp(curcolor[0]));
+     outcolor[1] = (char) (255 * clamp(curcolor[1]));
+     outcolor[2] = (char) (255 * clamp(curcolor[2]));
 
      //Give us the current pixel in terms of the PPMImage data array
      int curPix = (height - y) * width + x;

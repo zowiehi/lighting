@@ -137,6 +137,7 @@ int getSize(){
   return size;
 }
 
+
 //read in the json info and return an array of objects
 Object** read_scene(char* filename) {
   //c for character, i for index
@@ -209,7 +210,9 @@ Object** read_scene(char* filename) {
         objects[i]->kind = 2;
       }
       else if(strcmp(value, "light") == 0) {
-        objects[i]-> kind = 3;
+        objects[i]->kind = 3;
+
+
       }
       //if not one of these, throw error
        else {
@@ -221,7 +224,7 @@ Object** read_scene(char* filename) {
 
       //Key check values
       int col = 0, p = 0, r = 0, n = 0, w = 0, h = 0, d = 0, s = 0,
-          dir = 0, rad = 0, ang = 0;
+          dir = 0, rad = 0, ang = 0,theta = 0;
 
       //loop goes through each attribute of the object until the closing bracket is read
       while (1) {
@@ -240,25 +243,25 @@ Object** read_scene(char* filename) {
               }
               break;
             case 1:
-              if(p == 0 || d == 0 || s == 0 || r == 0){
+              if(p == 0 || d == 0 || r == 0){
                 fprintf(stderr, "Error: please provide a valid sphere object\n" );
                 exit(1);
               }
               break;
             case 2:
-              if(p == 0 || d == 0 || s == 0 || n == 0){
+              if(p == 0 || d == 0 || n == 0){
                 fprintf(stderr, "Error: please provide a valid plane object\n" );
                 exit(1);
               }
               break;
             case 3:
               if(p == 0 || col == 0){
-                fprintf(stderr, "Error: please provide a valid plane object\n" );
+                fprintf(stderr, "Error: please provide a valid light object\n" );
                 exit(1);
               }
               switch (objects[i]->light.type) {
                 case 0:
-                  if(dir == 0 || ang == 0 || rad == 0){
+                  if(dir == 0 || ang == 0 || rad == 0 || theta == 0){
                     fprintf(stderr, "Error: please provide a valid plane object\n" );
                     exit(1);
                   }
@@ -318,16 +321,15 @@ Object** read_scene(char* filename) {
                 fprintf(stderr, "Error, type/key missmatch, line number %d \n", line);
                 exit(1);
               }
-              else if(objects[i]->light.type == 1) {
-                fprintf(stderr, "Error, type/key missmatch, line number %d \n", line);
-                exit(1);
-              }
               dir = 1;
               objects[i]->light.type = 0;
-              double* val = next_vector(json);
+
+              double* value = next_vector(json);
+
               objects[i]->light.direction[0] = value[0];
               objects[i]->light.direction[1] = value[1];
               objects[i]->light.direction[2] = value[2];
+              printf("%f %f %f\n", objects[i]->light.direction[0], objects[i]->light.direction[1], objects[i]->light.direction[2] );
             }
 
             else if(strcmp(key, "color") == 0) {
@@ -338,9 +340,11 @@ Object** read_scene(char* filename) {
               col = 1;
 
               double* value = next_vector(json);
+
               objects[i]->light.color[0] = value[0];
               objects[i]->light.color[1] = value[1];
               objects[i]->light.color[2] = value[2];
+              printf("%f %f %f\n", objects[i]->light.color[0], objects[i]->light.color[1], objects[i]->light.color[2] );
 
             }
 
@@ -354,6 +358,7 @@ Object** read_scene(char* filename) {
 
               if(dir == 0) {
                 objects[i]->light.type = 1;
+                objects[i]->light.angular = 0;
               }
 
               objects[i]->light.radial[0] = next_number(json);
@@ -364,13 +369,8 @@ Object** read_scene(char* filename) {
                 fprintf(stderr, "Error, type/key missmatch, line number %d \n", line);
                 exit(1);
               }
-              else if(objects[i]->light.type == 1) {
-                fprintf(stderr, "Error, type/key missmatch, line number %d \n", line);
-                exit(1);
-              }
-              else{
-                objects[i]->light.radial[1] = next_number(json);
-              }
+              objects[i]->light.radial[1] = next_number(json);
+
             }
 
             else if(strcmp(key, "radial-a0") == 0) {
@@ -378,13 +378,8 @@ Object** read_scene(char* filename) {
                 fprintf(stderr, "Error, type/key missmatch, line number %d \n", line);
                 exit(1);
               }
-              else if(objects[i]->light.type == 1) {
-                fprintf(stderr, "Error, type/key missmatch, line number %d \n", line);
-                exit(1);
-              }
-              else{
-                objects[i]->light.radial[2] = next_number(json);
-              }
+              objects[i]->light.radial[2] = next_number(json);
+
             }
 
             else if(strcmp(key, "angular-a0") == 0) {
@@ -392,7 +387,7 @@ Object** read_scene(char* filename) {
                 fprintf(stderr, "Error, type/key missmatch, line number %d \n", line);
                 exit(1);
               }
-              else if(objects[i]->light.type != 0) {
+              else if(dir == 0) {
                 fprintf(stderr, "Error, type/key missmatch, line number %d \n", line);
                 exit(1);
               }
@@ -400,6 +395,16 @@ Object** read_scene(char* filename) {
                 ang = 1;
                 objects[i]->light.angular = next_number(json);
               }
+            }
+
+            else if(strcmp(key, "theta") == 0) {
+              if(objects[i]->kind != 3){
+                fprintf(stderr, "Error, type/key missmatch, line number %d \n", line);
+                exit(1);
+              }
+              theta = 1;
+              objects[i]->light.theta = next_number(json);
+
             }
 
             //Get the specular color - applies to all but cameras and lights
@@ -492,6 +497,7 @@ Object** read_scene(char* filename) {
               objects[i]->plane.normal[0] = value[0];
               objects[i]->plane.normal[1] = value[1];
               objects[i]->plane.normal[2] = value[2];
+              printf("%f %f %f\n", objects[i]->plane.normal[0], objects[i]->plane.normal[1], objects[i]->plane.normal[2] );
             }
             //We didnt recognize the property
             else {
@@ -532,9 +538,9 @@ Object** read_scene(char* filename) {
       }
     }
   }
-  //
+
   // int main() {
-  //   Object** objects = read_scene("objects.json");
-  //
+  //   Object** objects = read_scene("lightOb.json");
+  //   printf("%d %f %f\n",objects[3]->light.type,objects[3]->light.theta, objects[3]->light.angular);
   //   return 0;
   // }
