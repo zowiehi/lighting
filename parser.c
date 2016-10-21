@@ -267,7 +267,7 @@ Object** read_scene(char* filename) {
                   }
                 case 1:
                   if(rad == 0){
-                    fprintf(stderr, "Error: please provide a valid plane object\n" );
+                    fprintf(stderr, "Error: please provide a valid point light object\n" );
                     exit(1);
                   }
               }
@@ -358,9 +358,7 @@ Object** read_scene(char* filename) {
 
               if(dir == 0) {
                 objects[i]->light.type = 1;
-                objects[i]->light.angular = 0;
               }
-
               objects[i]->light.radial[0] = next_number(json);
             }
 
@@ -387,12 +385,13 @@ Object** read_scene(char* filename) {
                 fprintf(stderr, "Error, type/key missmatch, line number %d \n", line);
                 exit(1);
               }
-              else if(dir == 0) {
+              if(objects[i]->light.type == 1){
                 fprintf(stderr, "Error, type/key missmatch, line number %d \n", line);
                 exit(1);
               }
               else{
                 ang = 1;
+                objects[i]->light.type = 0;
                 objects[i]->light.angular = next_number(json);
               }
             }
@@ -402,8 +401,14 @@ Object** read_scene(char* filename) {
                 fprintf(stderr, "Error, type/key missmatch, line number %d \n", line);
                 exit(1);
               }
-              theta = 1;
-              objects[i]->light.theta = next_number(json);
+              double value = next_number(json);
+              if(value == 0){
+                objects[i]->light.type = 1;
+              }
+              else{
+                theta = 1;
+                objects[i]->light.theta = value;
+              }
 
             }
 

@@ -12,7 +12,7 @@ Ray Caster
  #include <math.h>
  #include "parser.h"
 
- double ns = 1;
+ double ns = 60;
 
 
 double clamp(double v){
@@ -26,7 +26,6 @@ double* zvec(){
   vec[0] = 0;
   vec[1] = 0;
   vec[2] = 0;
-  printf("zvec\n" );
   return vec;
 }
 
@@ -52,6 +51,15 @@ static inline double* cross(double* v1, double* v2){
   result[2] = v1[0]*v2[1] - v1[1]*v2[0];
   return result;
 }
+
+static inline double* mult(double* v1, double* v2){
+  double* result = malloc(sizeof(double)*3);
+  result[0] = v1[0]*v2[0];
+  result[1] = v1[1]*v2[1];
+  result[2] = v1[2]*v2[2];
+  return result;
+}
+
 
 //Subtract one vector from another
 static inline double* sub(double* v1, double* v2){
@@ -93,7 +101,7 @@ static inline double* scale(double t, double* v){
  }
 
  double frad(double* rad, double d){
-   printf("here\n" );
+
    double det = ((rad[0] * sqr(d)) + (rad[1] * d) + rad[2]);
    if(det == 0) return 0;
    else return 1 / det;
@@ -103,8 +111,7 @@ static inline double* scale(double t, double* v){
 
    if(dir[0] == 0 && dir[1] == 0 && dir[2] == 0) return 1.0;
    double val = dot(Rdn, dir);
-   printf("1here\n" );
-   printf("%f %f\n", val, cos(theta));
+
    if (val < cos(theta)) {
     return 0.0;
   }
@@ -113,16 +120,14 @@ static inline double* scale(double t, double* v){
 
  double* dif(double* Kd, double* Il, double* N, double* L){
    double dots = dot(N,L);
-   printf("dots:%f\n", dots );
-   if(dots > 0)return scale(dots, cross(Kd, Il));
+   if(dots > 0)return scale(dots, mult(Kd, Il));
    else return zvec();
  }
 
  double* spec(double* Ks, double* Il, double* V, double* R, double* N, double* L){
    double dots = dot(V,R);
    double dots2 = dot(N,L);
-   printf("dots:%f\n", dots );
-   if (dots > 0 && dots2 > 0)return scale(pow(dots,ns), cross(Ks, Il));
+   if (dots > 0 && dots2 > 0)return scale(pow(dots,ns), mult(Ks, Il));
    else return zvec();
  }
 
@@ -311,9 +316,9 @@ static inline double* scale(double t, double* v){
       int curPix = (height - y) * width + x;
 
       if (best_obj == NULL) {
-        image.data[curPix].r = backcolor[0];
-        image.data[curPix].g = backcolor[1];
-        image.data[curPix].b = backcolor[2];
+        image.data[curPix].r = 0;
+        image.data[curPix].g = 0;
+        image.data[curPix].b = 0;
         continue;
       };
 
@@ -362,12 +367,12 @@ static inline double* scale(double t, double* v){
             closest_shadow_object = 1;
           }
           if (closest_shadow_object == 0) {
-             double* N = malloc(sizeof(double)*3);
-            double* L = malloc(sizeof(double)*3);
-            double* R = malloc(sizeof(double)*3);
-            double* V = malloc(sizeof(double)*3);
-            double* Kd = malloc(sizeof(double)*3);
-            double* Ks = malloc(sizeof(double)*3);
+            double* N;
+            double* L;
+            double* R;
+            double* V;
+            double* Kd;
+            double* Ks;
 
 
 
@@ -376,23 +381,17 @@ static inline double* scale(double t, double* v){
 
             normalize(N);
 
-            printf("%f %f %f\n", Rdn[0], Rdn[1], Rdn[2] );
+
 
 	          L = Rdn; // light_position - Ron;
 
-            printf("%f %f %f\n", L[0], L[1], L[2] );
-            printf("%f %f %f\n", lights[j]->light.direction[0], lights[j]->light.direction[1], lights[j]->light.direction[2] );
           	R = sub(scale(2 * dot(L,N), N), L);
             normalize(R);
           	V = scale(-1, Rd);
-            normalize(V);
+
           	Kd = dif(difcol, lights[j]->light.color, N, L); // uses object's diffuse color
 
           	Ks = spec(speccol, lights[j]->light.color, V, R, N, L);; // uses object's specular color
-
-
-            printf("%f %f\n", Kd[0], Ks[0]);
-
 
           	curcolor[0] += frad(lights[j]->light.radial, dist) * fang(lights[j]->light.angular, lights[j]->light.theta, L, lights[j]->light.direction) * (Kd[0] + Ks[0]);
           	curcolor[1] += frad(lights[j]->light.radial, dist) * fang(lights[j]->light.angular, lights[j]->light.theta, L, lights[j]->light.direction) * (Kd[1] + Ks[1]);
