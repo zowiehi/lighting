@@ -1,8 +1,11 @@
 /*
 Created by Zowie Haugaard
-10/4/16
-Ray Caster
-  This Ray caster creates a .ppm image from a .json style list of objects
+10/20/16
+Ray casting and lighting model
+  This Ray caster creates a .ppm image from a .json style list of objects. This
+  project has been modified from the origional ray caster to include support for
+  a simple lighting model including spot and point lights
+
  */
 
  #include <stdio.h>
@@ -12,9 +15,10 @@ Ray Caster
  #include <math.h>
  #include "parser.h"
 
+//The shinyness component
  double ns = 20;
 
-
+//clamp values between 0 and 1
 double clamp(double v){
   if( v > 1) v = 1;
   else if(v < 0) v = 0;
@@ -34,6 +38,7 @@ static inline double sqr(double v) {
    return v*v;
  }
 
+//return the length of a vector
  static inline double len(double* v) {
    double len = sqrt(sqr(v[0]) + sqr(v[1]) + sqr(v[2]));
    return len;
@@ -44,6 +49,7 @@ static inline double dot(double* v1, double* v2){
   return v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2];
 }
 
+//return the cross product of two vectors
 static inline double* cross(double* v1, double* v2){
   double* result = malloc(sizeof(double)*3);
   result[0] = v1[1]*v2[2] - v1[2]*v2[1];
@@ -52,6 +58,7 @@ static inline double* cross(double* v1, double* v2){
   return result;
 }
 
+//multply the coresponding values of two vectors by one another
 static inline double* mult(double* v1, double* v2){
   double* result = malloc(sizeof(double)*3);
   result[0] = v1[0]*v2[0];
@@ -70,6 +77,7 @@ static inline double* sub(double* v1, double* v2){
   return result;
 }
 
+//add two vectors together
 static inline double* add(double* v1, double* v2){
   double* result = malloc(sizeof(double)*3);
   result[0] = v1[0] + v2[0];
@@ -78,6 +86,7 @@ static inline double* add(double* v1, double* v2){
   return result;
 }
 
+//Scale a vector by some constant t
 static inline double* scale(double t, double* v){
   double* result = malloc(sizeof(double)*3);
   result[0] = t * v[0];
@@ -100,6 +109,7 @@ static inline double* scale(double t, double* v){
    return normalize(sub(v1, v2));
  }
 
+//Calculate the radial attenuation in our lighting model
  double frad(double* rad, double d){
 
    double det = ((rad[0] * sqr(d)) + (rad[1] * d) + rad[2]);
@@ -107,6 +117,7 @@ static inline double* scale(double t, double* v){
    else return 1 / det;
  }
 
+ //Calculate the angular attenuation in our lighting model
  double fang(double ang, double theta, double* Rdn, double* dir){
 
    if(dir[0] == 0 && dir[1] == 0 && dir[2] == 0) return 1.0;
@@ -118,12 +129,14 @@ static inline double* scale(double t, double* v){
    else return pow(val, ang);
  }
 
+ //calculate the diffuse component of the lighting model
  double* dif(double* Kd, double* Il, double* N, double* L){
    double dots = dot(N,L);
    if(dots > 0)return scale(dots, mult(Kd, Il));
    else return zvec();
  }
 
+ //calculate the specular component of the lighting model
  double* spec(double* Ks, double* Il, double* V, double* R, double* N, double* L){
    double dots = dot(V,R);
    double dots2 = dot(N,L);
@@ -199,10 +212,10 @@ static inline double* scale(double t, double* v){
 
 
 
-
+   //create an array of just lights
    Object** lights = malloc(sizeof(Object*)*2);
    int Li = 0;
-
+   //pull lights from our objects array and put them in the new one
    for (int i=0; objects[i] != NULL; i += 1){
      if(objects[i]->kind == 3){
        lights[Li] = malloc(sizeof(Object));
@@ -401,6 +414,7 @@ static inline double* scale(double t, double* v){
             //specular component
           	Ks = spec(speccol, lights[j]->light.color, V, R, N, L);; // uses object's specular color
 
+            //our simple lighting model
           	curcolor[0] += frad(lights[j]->light.radial, dist) * fang(lights[j]->light.angular, lights[j]->light.theta, L, lights[j]->light.direction) * (Kd[0] + Ks[0]);
           	curcolor[1] += frad(lights[j]->light.radial, dist) * fang(lights[j]->light.angular, lights[j]->light.theta, L, lights[j]->light.direction) * (Kd[1] + Ks[1]);
           	curcolor[2] += frad(lights[j]->light.radial, dist) * fang(lights[j]->light.angular, lights[j]->light.theta, L, lights[j]->light.direction) * (Kd[2] + Ks[2]);
@@ -413,13 +427,12 @@ static inline double* scale(double t, double* v){
       //24-bit colors from our double color values
      static unsigned char outcolor[3];
 
+     //clamp colors between 0 and 1, then multiply by 255
      outcolor[0] = (char) (255 * clamp(curcolor[0]));
      outcolor[1] = (char) (255 * clamp(curcolor[1]));
      outcolor[2] = (char) (255 * clamp(curcolor[2]));
 
-     //Give us the current pixel in terms of the PPMImage data array
-
-     //If we got a collision, color it with the current pixel
+     //Color the pixel in the buffer
      if (best_t > 0 && best_t != INFINITY) {
        image.data[curPix].r = outcolor[0];
        image.data[curPix].g = outcolor[1];
