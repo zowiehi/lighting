@@ -32,6 +32,8 @@ typedef struct {
   };
 } Object;
 
+double zerovec[3];
+
 int getSize();
 int next_c(FILE* json);
 void expect_c(FILE* json, int d);

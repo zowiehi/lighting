@@ -12,7 +12,7 @@ Ray Caster
  #include <math.h>
  #include "parser.h"
 
- double ns = 60;
+ double ns = 20;
 
 
 double clamp(double v){
@@ -20,7 +20,7 @@ double clamp(double v){
   else if(v < 0) v = 0;
   return v;
   }
-
+//generate a vector of zero values
 double* zvec(){
   double* vec = malloc(sizeof(double)*3);
   vec[0] = 0;
@@ -110,7 +110,7 @@ static inline double* scale(double t, double* v){
  double fang(double ang, double theta, double* Rdn, double* dir){
 
    if(dir[0] == 0 && dir[1] == 0 && dir[2] == 0) return 1.0;
-   double val = dot(Rdn, dir);
+   double val = dot(dir, Rdn);
 
    if (val < cos(theta)) {
     return 0.0;
@@ -306,7 +306,7 @@ static inline double* scale(double t, double* v){
         }
 
         //If we have a valid collision that is closer than the next best, set our
-        //  current pixel color
+        //  best collision point and closest object
         if (t > 0 && t < best_t) {
           best_t = t;
           best_obj = objects[i];
@@ -315,37 +315,46 @@ static inline double* scale(double t, double* v){
 
       int curPix = (height - y) * width + x;
 
+      //If we didnt get a collision, go to the next loop and color the pixel black
       if (best_obj == NULL) {
         image.data[curPix].r = 0;
         image.data[curPix].g = 0;
         image.data[curPix].b = 0;
         continue;
       };
-
+      //Get the diffuse color from the object
       double* difcol = malloc(sizeof(double)*3);
       if(best_obj->kind == 1) difcol = best_obj->sphere.diffuse;
       else if(best_obj->kind == 2) difcol = best_obj->plane.diffuse;
 
+      //Get the specular color from the object
       double* speccol = malloc(sizeof(double)*3);
       if(best_obj->kind == 1) speccol = best_obj->sphere.diffuse;
       else if(best_obj->kind == 2) speccol = best_obj->plane.diffuse;
 
+      //set the "ambient light"
       curcolor[0] = 0;
       curcolor[1] = 0;
       curcolor[2] = 0;
 
+
+      //loop through each of the lght objects
       for (int j=0; lights[j] != NULL; j+=1) {
 
-      // Shadow test
-        double* Ron = malloc(sizeof(double)*3);
-        Ron = add(scale(best_t, Rd), Ro);
-
+        //the point on the object where we got a collision
+        double* Ron = add(scale(best_t, Rd), Ro);
+        //the ray from that point to the current light
         double* Rdn = sub(lights[j]->light.position, Ron);
+        //The distance to the light
         double dist = normalize(Rdn);
+        //simple boolean to see if we are in shadow
         double closest_shadow_object = 0;
+        //loop through Objects and see if any are between the collision point and the light
         for (int k=0; objects[k] != NULL; k+=1) {
-          double t;
+          double t = 0;
+          //we want to exclude the current object
         	if (objects[k] == best_obj) continue;
+          //detect collisions
         	switch(objects[k]->kind) {
             case 0:
           	  break;
@@ -361,11 +370,14 @@ static inline double* scale(double t, double* v){
           	  // ERROR
           	  break;
           	}
-          	if (t > dist || t < 0) {
+            //the object was either behind the current object or behind the light
+          	if (t > dist || t <= 0) {
           	  continue;
           	}
-            closest_shadow_object = 1;
+            //The object was between the collision point and the light
+            else if (t < dist && t > 0) closest_shadow_object = 1;
           }
+          //only do this if there is no shadow
           if (closest_shadow_object == 0) {
             double* N;
             double* L;
@@ -373,24 +385,20 @@ static inline double* scale(double t, double* v){
             double* V;
             double* Kd;
             double* Ks;
-
-
-
+            //get the normal of the object
             if(best_obj->kind == 1)	N = sub(Ron, best_obj->sphere.position);
             else if(best_obj->kind == 2)N = best_obj->plane.normal; // plane
-
+            //normalize
             normalize(N);
-
-
 
 	          L = Rdn; // light_position - Ron;
 
           	R = sub(scale(2 * dot(L,N), N), L);
             normalize(R);
           	V = scale(-1, Rd);
-
+            //diffuse component
           	Kd = dif(difcol, lights[j]->light.color, N, L); // uses object's diffuse color
-
+            //specular component
           	Ks = spec(speccol, lights[j]->light.color, V, R, N, L);; // uses object's specular color
 
           	curcolor[0] += frad(lights[j]->light.radial, dist) * fang(lights[j]->light.angular, lights[j]->light.theta, L, lights[j]->light.direction) * (Kd[0] + Ks[0]);
@@ -417,9 +425,6 @@ static inline double* scale(double t, double* v){
        image.data[curPix].g = outcolor[1];
        image.data[curPix].b = outcolor[2];
      }
-     //otherwise, color it with the background color
-
-
 
 
    }
