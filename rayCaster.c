@@ -33,6 +33,10 @@ double* zvec(){
   return vec;
 }
 
+static inline double rad_to_deg(double rad) {
+    return rad * (180.0 / M_PI);
+}
+
 //returnthe square of the supplied number
 static inline double sqr(double v) {
    return v*v;
@@ -119,7 +123,7 @@ static inline double* scale(double t, double* v){
 
  //Calculate the angular attenuation in our lighting model
  double fang(double ang, double theta, double* Rdn, double* dir){
-
+   theta = rad_to_deg(theta);
    if(dir[0] == 0 && dir[1] == 0 && dir[2] == 0) return 1.0;
    double val = dot(dir, Rdn);
 
